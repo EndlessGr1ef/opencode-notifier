@@ -44,16 +44,25 @@ describe("Config", () => {
   })
 
   test("loadConfig returns default config when no config file exists", async () => {
-    const { loadConfig } = await import("./config")
-    const config = loadConfig()
-    
-    expect(config.sound).toBe(true)
-    expect(config.notification).toBe(true)
-    expect(config.bell).toBe(false)
-    expect(config.timeout).toBe(5)
-    expect(config.showProjectName).toBe(true)
-    expect(config.showIcon).toBe(true)
-    expect(config.notificationSystem).toBe("osascript")
+    // Clear TERM_PROGRAM to test default detection (falls back to node-notifier)
+    const prevTermProgram = process.env.TERM_PROGRAM
+    delete process.env.TERM_PROGRAM
+    try {
+      const { loadConfig } = await import("./config")
+      const config = loadConfig()
+      
+      expect(config.sound).toBe(true)
+      expect(config.notification).toBe(true)
+      expect(config.bell).toBe(false)
+      expect(config.timeout).toBe(5)
+      expect(config.showProjectName).toBe(true)
+      expect(config.showIcon).toBe(true)
+      expect(["osascript", "node-notifier", "ghostty"]).toContain(config.notificationSystem)
+    } finally {
+      if (prevTermProgram !== undefined) {
+        process.env.TERM_PROGRAM = prevTermProgram
+      }
+    }
   })
 
   test("loadConfig parses existing config file", async () => {
@@ -348,5 +357,78 @@ describe("Config", () => {
     const statePath = getStatePath()
 
     expect(statePath).toEndWith("opencode-notifier-state.json")
+  })
+
+  test("auto-detection selects ghostty when TERM_PROGRAM=ghostty", async () => {
+    const prevTermProgram = process.env.TERM_PROGRAM
+    process.env.TERM_PROGRAM = "ghostty"
+    try {
+      const { loadConfig } = await import("./config")
+      // No config file → auto-detection kicks in
+      const config = loadConfig()
+      expect(config.notificationSystem).toBe("ghostty")
+    } finally {
+      if (prevTermProgram !== undefined) {
+        process.env.TERM_PROGRAM = prevTermProgram
+      } else {
+        delete process.env.TERM_PROGRAM
+      }
+    }
+  })
+
+  test("auto-detection falls back to node-notifier for other terminals", async () => {
+    const prevTermProgram = process.env.TERM_PROGRAM
+    process.env.TERM_PROGRAM = "iTerm.app"
+    try {
+      const { loadConfig } = await import("./config")
+      const config = loadConfig()
+      expect(config.notificationSystem).toBe("node-notifier")
+    } finally {
+      if (prevTermProgram !== undefined) {
+        process.env.TERM_PROGRAM = prevTermProgram
+      } else {
+        delete process.env.TERM_PROGRAM
+      }
+    }
+  })
+
+  test('notificationSystem "auto" in config triggers detection', async () => {
+    const prevTermProgram = process.env.TERM_PROGRAM
+    process.env.TERM_PROGRAM = "ghostty"
+    const testConfig = {
+      notificationSystem: "auto"
+    }
+    writeFileSync(testConfigPath, JSON.stringify(testConfig))
+    try {
+      const { loadConfig } = await import("./config")
+      const config = loadConfig()
+      expect(config.notificationSystem).toBe("ghostty")
+    } finally {
+      if (prevTermProgram !== undefined) {
+        process.env.TERM_PROGRAM = prevTermProgram
+      } else {
+        delete process.env.TERM_PROGRAM
+      }
+    }
+  })
+
+  test("explicit notificationSystem overrides auto-detection", async () => {
+    const prevTermProgram = process.env.TERM_PROGRAM
+    process.env.TERM_PROGRAM = "ghostty"
+    const testConfig = {
+      notificationSystem: "osascript"
+    }
+    writeFileSync(testConfigPath, JSON.stringify(testConfig))
+    try {
+      const { loadConfig } = await import("./config")
+      const config = loadConfig()
+      expect(config.notificationSystem).toBe("osascript")
+    } finally {
+      if (prevTermProgram !== undefined) {
+        process.env.TERM_PROGRAM = prevTermProgram
+      } else {
+        delete process.env.TERM_PROGRAM
+      }
+    }
   })
 })

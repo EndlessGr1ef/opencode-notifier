@@ -247,11 +247,20 @@ function parseVolume(value: unknown, defaultVolume: number): number {
   return value
 }
 
+function detectNotificationSystem(): "osascript" | "node-notifier" | "ghostty" {
+  const term = (process.env.TERM_PROGRAM || "").toLowerCase()
+  if (term === "ghostty") return "ghostty"
+  return "node-notifier"
+}
+
 export function loadConfig(): NotifierConfig {
   const configPath = getConfigPath()
 
   if (!existsSync(configPath)) {
-    return DEFAULT_CONFIG
+    return {
+      ...DEFAULT_CONFIG,
+      notificationSystem: detectNotificationSystem(),
+    }
   }
 
   try {
@@ -300,7 +309,9 @@ export function loadConfig(): NotifierConfig {
           ? "node-notifier"
           : userConfig.notificationSystem === "ghostty"
             ? "ghostty"
-            : "osascript",
+            : userConfig.notificationSystem === "osascript"
+              ? "osascript"
+              : detectNotificationSystem(),
       linux: {
         grouping: typeof userConfig.linux?.grouping === "boolean" ? userConfig.linux.grouping : DEFAULT_CONFIG.linux.grouping,
       },
