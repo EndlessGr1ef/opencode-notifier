@@ -53,7 +53,7 @@ describe("Config", () => {
     expect(config.timeout).toBe(5)
     expect(config.showProjectName).toBe(true)
     expect(config.showIcon).toBe(true)
-    expect(config.notificationSystem).toBe("osascript")
+    expect(["osascript", "node-notifier", "ghostty"]).toContain(config.notificationSystem)
   })
 
   test("loadConfig parses existing config file", async () => {
@@ -96,6 +96,60 @@ describe("Config", () => {
     
     expect(config.sound).toBe(true) // default
     expect(config.notification).toBe(true) // default
+  })
+
+  test("detectNotificationSystem detects Ghostty via TERM_PROGRAM", async () => {
+    const { detectNotificationSystem } = await import("./config")
+    expect(detectNotificationSystem({ TERM_PROGRAM: "ghostty" })).toBe("ghostty")
+    expect(detectNotificationSystem({ TERM_PROGRAM: "Ghostty" })).toBe("ghostty")
+    expect(detectNotificationSystem({ TERM_PROGRAM: "GHOSTTY" })).toBe("ghostty")
+  })
+
+  test("detectNotificationSystem detects Ghostty via GHOSTTY_RESOURCES_DIR", async () => {
+    const { detectNotificationSystem } = await import("./config")
+    expect(detectNotificationSystem({ GHOSTTY_RESOURCES_DIR: "/opt/ghostty" })).toBe("ghostty")
+  })
+
+  test("detectNotificationSystem ignores empty GHOSTTY_RESOURCES_DIR", async () => {
+    const { detectNotificationSystem } = await import("./config")
+    expect(detectNotificationSystem({ GHOSTTY_RESOURCES_DIR: "" })).toBe("node-notifier")
+  })
+
+  test("detectNotificationSystem falls back to node-notifier", async () => {
+    const { detectNotificationSystem } = await import("./config")
+    expect(detectNotificationSystem({})).toBe("node-notifier")
+    expect(detectNotificationSystem({ TERM_PROGRAM: "iTerm.app" })).toBe("node-notifier")
+  })
+
+  test("loadConfig resolves auto/unknown via detection", async () => {
+    const prevTermProgram = process.env.TERM_PROGRAM
+    process.env.TERM_PROGRAM = "ghostty"
+    try {
+      writeFileSync(testConfigPath, JSON.stringify({ notificationSystem: "auto" }))
+      const { loadConfig } = await import("./config")
+      expect(loadConfig().notificationSystem).toBe("ghostty")
+
+      writeFileSync(testConfigPath, JSON.stringify({ notificationSystem: "unknown" }))
+      expect(loadConfig().notificationSystem).toBe("ghostty")
+    } finally {
+      if (prevTermProgram !== undefined) {
+        process.env.TERM_PROGRAM = prevTermProgram
+      } else {
+        delete process.env.TERM_PROGRAM
+      }
+    }
+  })
+
+  test("loadConfig preserves explicit notificationSystem values", async () => {
+    const { loadConfig } = await import("./config")
+    writeFileSync(testConfigPath, JSON.stringify({ notificationSystem: "osascript" }))
+    expect(loadConfig().notificationSystem).toBe("osascript")
+
+    writeFileSync(testConfigPath, JSON.stringify({ notificationSystem: "node-notifier" }))
+    expect(loadConfig().notificationSystem).toBe("node-notifier")
+
+    writeFileSync(testConfigPath, JSON.stringify({ notificationSystem: "ghostty" }))
+    expect(loadConfig().notificationSystem).toBe("ghostty")
   })
 
   test("loadConfig parses event-specific config", async () => {

@@ -233,7 +233,7 @@ export async function sendNotification(
   message: string,
   timeout: number,
   iconPath?: string,
-  notificationSystem: "osascript" | "node-notifier" | "ghostty" = "osascript",
+  notificationSystem: "osascript" | "node-notifier" | "ghostty" = "node-notifier",
   linuxGrouping: boolean = true,
   onClick?: () => void
 ): Promise<void> {

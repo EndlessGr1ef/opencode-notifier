@@ -72,7 +72,7 @@ Create `~/.config/opencode/opencode-notifier.json` with the defaults:
   "customIconPath": null,
   "suppressWhenFocused": true,
   "enableOnDesktop": false,
-  "notificationSystem": "osascript",
+  "notificationSystem": "auto",
   "linux": {
     "grouping": false
   },
@@ -149,7 +149,7 @@ Create `~/.config/opencode/opencode-notifier.json` with the defaults:
   "showIcon": true,
   "suppressWhenFocused": true,
   "enableOnDesktop": false,
-  "notificationSystem": "osascript"
+  "notificationSystem": "auto"
 }
 ```
 
@@ -163,7 +163,7 @@ Create `~/.config/opencode/opencode-notifier.json` with the defaults:
 - `customIconPath` - Path to a custom icon for notifications. Useful on WSL where Windows paths are needed (default: null)
 - `suppressWhenFocused` - Skip notifications and sounds when the terminal is the active window (default: true). See [Focus detection](#focus-detection) for platform details
 - `enableOnDesktop` - Run the plugin on Desktop and Web clients (default: false). When false, the plugin only runs on CLI. Set to true if you want notifications/sounds/commands on Desktop/Web — useful if you want custom commands (Telegram, webhooks) but don't care about built-in notifications
-- `notificationSystem` - macOS only: `"osascript"`, `"node-notifier"`, or `"ghostty"` (default: "osascript"). Use `"ghostty"` if you're running Ghostty terminal for native OSC 9 notifications
+- `notificationSystem` - `"auto"`, `"osascript"`, `"node-notifier"`, or `"ghostty"` (default: "auto"). `"auto"` detects Ghostty terminal (via `TERM_PROGRAM` or `GHOSTTY_RESOURCES_DIR`) and uses OSC 9 automatically; falls back to `"node-notifier"` on all platforms. The `"auto"` value is resolved at config load time — your runtime config will contain the detected concrete value
 - `minDuration` - Suppress `complete` and `subagent_complete` notifications when session finishes faster than this many seconds (default: 0). See [Minimum duration threshold](#minimum-duration-threshold)
 - `linux.grouping` - Linux only: replace notifications in-place instead of stacking (default: false). Requires `notify-send` 0.8+
 
@@ -330,11 +330,19 @@ Run your own script when something happens. Use `{event}`, `{message}`, `{sessio
 
 ## macOS: Pick your notification style
 
-**osascript** (default): Reliable but shows Script Editor icon
+**auto** (default): Automatically detects your terminal. If you're running Ghostty, it uses native OSC 9 notifications. Otherwise falls back to node-notifier.
 
 ```json
 { 
-  "notificationSystem": "osascript" 
+  "notificationSystem": "auto" 
+}
+```
+
+**osascript**: Reliable but shows Script Editor icon
+
+```json
+{ 
+  "notificationSystem": "auto"
 }
 ```
 

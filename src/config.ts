@@ -130,7 +130,7 @@ const DEFAULT_CONFIG: NotifierConfig = {
   customIconPath: null,
   suppressWhenFocused: true,
   enableOnDesktop: false,
-  notificationSystem: "osascript",
+  notificationSystem: "node-notifier",
   linux: {
     grouping: false,
   },
@@ -247,11 +247,24 @@ function parseVolume(value: unknown, defaultVolume: number): number {
   return value
 }
 
+export function detectNotificationSystem(
+  env: NodeJS.ProcessEnv = process.env
+): "osascript" | "node-notifier" | "ghostty" {
+  const termProgram = (env.TERM_PROGRAM || "").toLowerCase()
+  if (termProgram === "ghostty" || !!env.GHOSTTY_RESOURCES_DIR) {
+    return "ghostty"
+  }
+  return "node-notifier"
+}
+
 export function loadConfig(): NotifierConfig {
   const configPath = getConfigPath()
 
   if (!existsSync(configPath)) {
-    return DEFAULT_CONFIG
+    return {
+      ...DEFAULT_CONFIG,
+      notificationSystem: detectNotificationSystem(),
+    }
   }
 
   try {
@@ -300,7 +313,9 @@ export function loadConfig(): NotifierConfig {
           ? "node-notifier"
           : userConfig.notificationSystem === "ghostty"
             ? "ghostty"
-            : "osascript",
+            : userConfig.notificationSystem === "osascript"
+              ? "osascript"
+              : detectNotificationSystem(),
       linux: {
         grouping: typeof userConfig.linux?.grouping === "boolean" ? userConfig.linux.grouping : DEFAULT_CONFIG.linux.grouping,
       },
