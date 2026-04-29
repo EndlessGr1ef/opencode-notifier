@@ -264,7 +264,10 @@ export async function sendNotification(
 
         notifier.notify(
           notificationOptions,
-          () => {
+          (err: any, response: any, metadata: any) => {
+            if (onClick && metadata?.activationType === "default") {
+              onClick()
+            }
             resolve()
           }
         )

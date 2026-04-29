@@ -194,7 +194,7 @@ async function handleEvent(
   if (isEventNotificationEnabled(config, eventType)) {
     const title = getNotificationTitle(config, projectName)
     const iconPath = getIconPath(config)
-    const onNotificationClick = isKDEJumpBackSupported() ? () => void focusTerminal() : undefined
+    const onNotificationClick = (isKDEJumpBackSupported() || config.notificationSystem === "node-notifier") ? () => void focusTerminal() : undefined
     promises.push(sendNotification(title, message, config.timeout, iconPath, config.notificationSystem, config.linux.grouping, onNotificationClick))
   }
 
